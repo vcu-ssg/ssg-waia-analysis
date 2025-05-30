@@ -1,0 +1,18 @@
+project:
+  type: website
+  output-dir: ../docs
+
+website:
+  title: "WAIA Analysis"
+  search: false
+  navbar:
+    left:
+      - text: Home
+        href: index.qmd
+      - text: Map
+        href: 06_addresses.qmd
+format:
+  html:
+    theme: cosmo
+    toc: true
+    echo: false

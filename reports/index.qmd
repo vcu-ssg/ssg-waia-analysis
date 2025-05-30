@@ -1,0 +1,13 @@
+---
+title: West Avenue Improvement Association
+---
+
+Founded in 1941, the [West Avenue Improvement Association (WAIA)](https://westavenue.org) is the oldest
+neighborhood association in Richmond, and is dedicated to 
+"the orderly development, preservation, and restoration of the neighborhood and shall work to maintain the quality of life for its residents."
+
+## Links
+
+* [West Avenue web site](https://westavenue.org/)
+* [WAIA Map - City of Richmond](https://www.rva.gov/sites/default/files/Planning/PDFDocuments/UsefulLinks/CivicGroupMaps/WestAvenueImprovementAssociation.pdf)
+* [City of Richmond GeoHub](https://richmond-geo-hub-cor.hub.arcgis.com/)

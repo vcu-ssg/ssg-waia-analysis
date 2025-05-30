@@ -1,0 +1,160 @@
+---
+title: Interactive map
+---
+
+
+```{python}
+
+import geopandas as gpd
+import os
+import matplotlib as plt
+
+# List of base names
+base_names = ["Civic_Associations", "Addresses", "Parcels"]
+
+# Folder where GeoJSON files are located
+geojson_folder = "../precious/"
+features = ["Addresses","Parcels"]
+selector = "Civic_Associations"
+
+selector_key = "Fan District Association"
+selector_key = "West Avenue Improvement Association"
+
+input_folder = "../data"
+
+# Load files into a dictionary
+data = {}
+
+for name in base_names:
+    file_path = os.path.join(input_folder, f"{name}.geojson")
+    if os.path.exists(file_path):
+        data[name] = gpd.read_file(file_path)
+    else:
+        print(f"⚠️ File not found: {file_path}")
+
+data[selector_key] = data[selector][ data[selector]["Name"]==selector_key]
+
+```
+
+Below is an interactive map of Addresses and parcels.  You can zoom and scroll.
+
+
+```{python}
+import folium
+from shapely.geometry import mapping
+import geopandas as gpd
+
+# Project and compute bounding box in WGS84
+association_boundary = data[selector_key].to_crs(epsg=4326)  # Folium uses WGS84
+
+# Compute bounds: [[south, west], [north, east]]
+minx, miny, maxx, maxy = association_boundary.total_bounds
+bounds = [[miny, minx], [maxy, maxx]]
+
+# Center for initial rendering (optional fallback)
+center = [(miny + maxy) / 2, (minx + maxx) / 2]
+
+# Create map and set bounds
+m = folium.Map(location=center, zoom_start=15, tiles="cartodbpositron")
+m.fit_bounds(bounds)
+
+```
+```{python}
+# Add neighborhood boundary
+x = folium.GeoJson(
+    data[selector_key].geometry,
+    name=selector_key,
+    style_function=lambda x: {
+        "color": "black",
+        "weight": 3,
+        "fillOpacity": 0,
+    }
+).add_to(m)
+
+```
+```{python}
+
+parcels = data["Parcels"].to_crs(epsg=4326)
+parcels_within_boundary = gpd.sjoin(
+    parcels,
+    association_boundary,
+    how="inner",
+    predicate="intersects"
+)
+# Keep only the columns you need
+parcels_display = parcels_within_boundary[["ParcelID", "geometry"]].copy()
+parcels_display["ParcelID"] = parcels_display["ParcelID"].fillna("Unknown").astype(str)
+
+
+# Example list of ParcelIDs to remove
+excluded_parcels = ["32708","119133","119132"]
+
+# Check the selector key and conditionally exclude ParcelIDs
+if selector_key == "West Avenue Improvement Association":
+    parcels_display = parcels_display[~parcels_display["ParcelID"].isin(excluded_parcels)]
+
+x = folium.GeoJson(
+    parcels_display,
+    name="Parcels",
+    style_function=lambda x: {
+        "color": "#999999",
+        "weight": 0.5,
+        "fillOpacity": 0.4,
+    },
+    tooltip=folium.GeoJsonTooltip(
+        fields=["ParcelID"],
+        aliases=["Parcel ID:"],
+        localize=True
+    )
+).add_to(m)
+
+
+
+# Add addresses (red points)
+
+```
+```{python}
+#| exec: false
+
+from shapely.geometry import Point
+addresses = data["Addresses"].to_crs(epsg=4326)
+
+
+# Perform spatial join using the 'within' predicate
+addresses_within_boundary = gpd.sjoin(
+    addresses,
+    association_boundary,
+    how="inner",
+    predicate="within"
+).drop(columns="index_right")  # drop the join index if not needed
+
+# Add address points with tooltip
+for _, row in addresses_within_boundary.iterrows():
+    point = row.geometry
+    name = row.get("AddressLabel") or "Unknown"
+
+    folium.CircleMarker(
+        location=[point.y, point.x],
+        radius=2,
+        color="black",
+        fill=True,
+        fill_color="gray",
+        fill_opacity=0.7,
+        tooltip=name
+    ).add_to(m)
+
+# Add layer control and display map
+
+x = folium.LayerControl().add_to(m)
+
+```
+
+
+::: {.column-page-inset-right}
+```{python}
+#| fig-height: 10
+#| fig-width: 12
+m
+```
+:::
+

@@ -154,6 +154,8 @@ x = folium.LayerControl().add_to(m)
 ```{python}
 #| fig-height: 10
 #| fig-width: 12
+
+m.save("../docs/waia_map.html")
 m
 ```
 :::

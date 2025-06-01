@@ -11,3 +11,12 @@ neighborhood association in Richmond, and is dedicated to
 * [West Avenue web site](https://westavenue.org/)
 * [WAIA Map - City of Richmond](https://www.rva.gov/sites/default/files/Planning/PDFDocuments/UsefulLinks/CivicGroupMaps/WestAvenueImprovementAssociation.pdf)
 * [City of Richmond GeoHub](https://richmond-geo-hub-cor.hub.arcgis.com/)
+
+## Files
+
+* [Addresses](addresses_within_boundary.xlsx) - A list of city-recognized addresses from the GIS files. City data may lag reality, so be cautious. Also note that some addresses may share the same geo-location, and thus on the map they will show stacked, with only the top address showing.
+
+* [Parcels](parcels_within_boundary.xlsx) - A list of city-recognized parcels from the GIS files.  These too may be stacked if they share the same boundarys.
+
+**Note** Mapping parcels and addresses is challenging, especially when condos, apartments, or other multi-family dwellings are involved.  While these two objects can be joined spatially, when they're stacked, this join returns multiple associations.  The *AsrLocationBldgNum* field in the *parcels* table can be helpful, but not perfect.
+

@@ -95,6 +95,7 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#links" id="toc-links" class="nav-link active" data-scroll-target="#links">Links</a></li>
+  <li><a href="#files" id="toc-files" class="nav-link" data-scroll-target="#files">Files</a></li>
   </ul>
 </nav>
     </div>
@@ -128,6 +129,14 @@ ul.task-list li input[type="checkbox"] {
 <li><a href="https://www.rva.gov/sites/default/files/Planning/PDFDocuments/UsefulLinks/CivicGroupMaps/WestAvenueImprovementAssociation.pdf">WAIA Map - City of Richmond</a></li>
 <li><a href="https://richmond-geo-hub-cor.hub.arcgis.com/">City of Richmond GeoHub</a></li>
 </ul>
+</section>
+<section id="files" class="level2">
+<h2 class="anchored" data-anchor-id="files">Files</h2>
+<ul>
+<li><p><a href="addresses_within_boundary.xlsx">Addresses</a> - A list of city-recognized addresses from the GIS files. City data may lag reality, so be cautious. Also note that some addresses may share the same geo-location, and thus on the map they will show stacked, with only the top address showing.</p></li>
+<li><p><a href="parcels_within_boundary.xlsx">Parcels</a> - A list of city-recognized parcels from the GIS files. These too may be stacked if they share the same boundarys.</p></li>
+</ul>
+<p><strong>Note</strong> Mapping parcels and addresses is challenging, especially when condos, apartments, or other multi-family dwellings are involved. While these two objects can be joined spatially, when they’re stacked, this join returns multiple associations. The <em>AsrLocationBldgNum</em> field in the <em>parcels</em> table can be helpful, but not perfect.</p>
 
 
 </section>

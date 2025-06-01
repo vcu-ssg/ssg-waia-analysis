@@ -5,8 +5,9 @@ title: Interactive map
 
 ```{python}
 
-import geopandas as gpd
 import os
+import pandas as pd
+import geopandas as gpd
 import matplotlib as plt
 
 # List of base names
@@ -88,10 +89,49 @@ parcels_display["ParcelID"] = parcels_display["ParcelID"].fillna("Unknown").asty
 
 # Example list of ParcelIDs to remove
 excluded_parcels = ["32708","119133","119132"]
+excluded_parcels = ["119133","119132"]
 
 # Check the selector key and conditionally exclude ParcelIDs
 if selector_key == "West Avenue Improvement Association":
     parcels_display = parcels_display[~parcels_display["ParcelID"].isin(excluded_parcels)]
+
+# Convert geometry to WKT string for Excel compatibility
+df_to_save = parcels_within_boundary.copy()
+keep_cols = [
+    "ParcelID", "PIN", "CountOfPIN", "OwnerName", "AsrLocationBldgNo",
+    "MailAddress", "MailCity", "MailState", "MailZip", "AssessmentDate",
+    "LandValue", "DwellingValue", "TotalValue", "LandSqFt", "ProvalAsmtNhood",
+    "TaxExemptCode", "PropertyClassID", "PropertyClass", "LandUse", "Mailable"
+]
+
+# Filter the DataFrame to only those columns
+#df_to_save = df_to_save[keep_cols]
+
+for col in df_to_save.select_dtypes(include=["datetimetz"]).columns:
+    df_to_save[col] = df_to_save[col].dt.tz_localize(None)
+
+#df_to_save = df_to_save.sort_values(by=["StreetName", "AddressLabel"])
+
+# Save to Excel
+output_path = "../docs/parcels_within_boundary.xlsx"
+
+with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
+    df_to_save.to_excel(writer, index=False, sheet_name="Addresses")
+
+    # Access the workbook and worksheet objects
+    workbook  = writer.book
+    worksheet = writer.sheets["Addresses"]
+
+    # Autofit each column to the max of header or data length
+    for idx, col in enumerate(df_to_save.columns):
+        # Get max length of column data (as string), or fallback to header length
+        max_len = max(
+            df_to_save[col].astype(str).map(len).max(),  # max data length
+            len(col)  # column header length
+        )
+        # Add a little extra padding (2 spaces)
+        worksheet.set_column(idx, idx, max_len + 2)
+
 
 x = folium.GeoJson(
     parcels_display,
@@ -128,6 +168,44 @@ addresses_within_boundary = gpd.sjoin(
     predicate="within"
 ).drop(columns="index_right")  # drop the join index if not needed
 
+
+# Convert geometry to WKT string for Excel compatibility
+df_to_save = addresses_within_boundary.copy()
+keep_cols = [
+    "AddressId", "AddressLabel", "BuildingNumber", "StreetDirection", "StreetName",
+    "StreetType", "ExtensionWithUnit", "UnitType", "UnitValue", "ZipCode", "Mailable",
+    "StatePlaneX", "StatePlaneY", "Latitude", "Longitude"
+]
+
+# Filter the DataFrame to only those columns
+df_to_save = df_to_save[keep_cols]
+
+for col in df_to_save.select_dtypes(include=["datetimetz"]).columns:
+    df_to_save[col] = df_to_save[col].dt.tz_localize(None)
+
+df_to_save = df_to_save.sort_values(by=["StreetName", "AddressLabel"])
+
+# Save to Excel
+output_path = "../docs/addresses_within_boundary.xlsx"
+
+with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
+    df_to_save.to_excel(writer, index=False, sheet_name="Addresses")
+
+    # Access the workbook and worksheet objects
+    workbook  = writer.book
+    worksheet = writer.sheets["Addresses"]
+
+    # Autofit each column to the max of header or data length
+    for idx, col in enumerate(df_to_save.columns):
+        # Get max length of column data (as string), or fallback to header length
+        max_len = max(
+            df_to_save[col].astype(str).map(len).max(),  # max data length
+            len(col)  # column header length
+        )
+        # Add a little extra padding (2 spaces)
+        worksheet.set_column(idx, idx, max_len + 2)
+
+
 # Add address points with tooltip
 for _, row in addresses_within_boundary.iterrows():
     point = row.geometry
@@ -160,3 +238,133 @@ m
 ```
 :::
 
+<p>&nbsp;</p>
+
+## Addresses sharing same geolocation
+
+The following is a list of addresses that share the same geolocation.
+
+```{python}
+
+df_to_save = addresses_within_boundary.copy()
+keep_cols = [
+    "AddressId", "AddressLabel", "BuildingNumber", "StreetDirection", "StreetName",
+    "StreetType", "ExtensionWithUnit", "UnitType", "UnitValue", "ZipCode", "Mailable",
+    "StatePlaneX", "StatePlaneY", "Latitude", "Longitude"
+]
+
+# Filter the DataFrame to only those columns
+df_to_save = df_to_save[keep_cols]
+
+duplicates = df_to_save.groupby(["Latitude", "Longitude"]).filter(lambda g: len(g) > 1)
+
+# Optional: sort for easier review
+duplicates = duplicates.sort_values(by=["Latitude", "Longitude", "StreetName","StreetDirection","BuildingNumber","ExtensionWithUnit","UnitType","UnitValue"])
+
+# Display the first few
+#print(duplicates.head())
+
+# Or save to Excel
+#duplicates.to_excel("duplicate_coordinates_addresses.xlsx", index=False)
+
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
+
+keep_cols = [
+     "AddressLabel", "BuildingNumber","ExtensionWithUnit", "UnitType","UnitValue", "Latitude", "Longitude","AddressId"
+]
+
+duplicates = duplicates[keep_cols]
+
+duplicates = duplicates.reset_index(drop=True)
+
+duplicates["_group_id"] = (
+    duplicates.groupby(["Latitude", "Longitude"], sort=False).ngroup()
+)
+
+# 2. Separate before styling
+group_ids = duplicates["_group_id"].reset_index(drop=True)
+df_styled = duplicates.drop(columns="_group_id").reset_index(drop=True)
+
+# 3. Define highlighting function that returns a DataFrame with same shape & column names
+def highlight_groups(df):
+    styles = []
+    for gid in group_ids:
+        color = "#e6e6e6" if gid % 2 == 0 else "#ffffff"
+        styles.append([f"background-color: {color}"] * df.shape[1])
+    return pd.DataFrame(styles, columns=df.columns)
+
+# 4. Apply style
+styled = df_styled.copy().style.apply(highlight_groups, axis=None)
+
+# Step 4: Display in Quarto (use echo: false if embedding)
+
+```
+
+::: {.column-page-inset-right}
+```{python}
+#| output: asis
+styled
+
+```
+:::
+
+<p>&nbsp;</p>
+
+## Parcels sharing same geolocation
+
+Parcels are kept separate from mailing address. (go figure!) SO, the parcel table below shows the mailing address of the parcel owner - who may or may not reside at the parcel.
+
+
+```{python}
+parcels = data["Parcels"].to_crs(epsg=4326)
+parcels_within_boundary = gpd.sjoin(
+    parcels,
+    association_boundary,
+    how="inner",
+    predicate="intersects"
+)
+
+# 1. Encode geometries as strings (WKT is readable; for speed use .geom.wkb.hex())
+parcels_within_boundary["geometry_wkt"] = parcels_within_boundary.geometry.apply(lambda g: g.wkt)
+
+# 2. Group by geometry
+duplicate_geoms = parcels_within_boundary.groupby("geometry_wkt").filter(lambda g: len(g) > 1)
+
+# 3. Assign group ID based on geometry
+duplicate_geoms["_group_id"] = (
+    duplicate_geoms.groupby("geometry_wkt", sort=False).ngroup()
+)
+
+# 4. Drop raw geometry_wkt column for display
+df_to_display = duplicate_geoms.drop(columns=["geometry", "geometry_wkt"]).reset_index(drop=True)
+
+display_cols = ["ParcelID", "AsrLocationBldgNo","OwnerName", "PropertyClassID","LandUse","MailAddress","MailCity"]
+df_to_display = df_to_display[display_cols]
+
+
+# 5. Prepare group IDs
+group_ids = duplicate_geoms["_group_id"].reset_index(drop=True)
+
+# 6. Style with alternating group backgrounds
+def highlight_groups(df):
+    styles = []
+    for gid in group_ids:
+        color = "#e6e6e6" if gid % 2 == 0 else "#ffffff"
+        styles.append([f"background-color: {color}"] * df.shape[1])
+    return pd.DataFrame(styles, columns=df.columns)
+
+# 7. Final styled table
+
+styled = df_to_display.style.apply(highlight_groups, axis=None)
+
+```
+
+::: {.column-page-inset-right}
+```{python}
+#| output: asis
+styled
+```
+:::
